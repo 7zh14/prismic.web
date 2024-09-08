@@ -1,0 +1,186 @@
+* {
+  box-sizing: border-box;
+}
+
+@font-face {
+  font-family: "VRCCustom";
+  src: url(https://dtuitjyhwcl5y.cloudfront.net/8d9094445fec54676bbab61b9028bf5fb7f2a7f4ad094e6e740fc387f037e1b1.woff2) format("woff2"),url(https://dtuitjyhwcl5y.cloudfront.net/45defec41a15e2ed9509768b65f1658c2093ff7da58e41994639998b33e878df.woff) format("woff"),url(https://dtuitjyhwcl5y.cloudfront.net/b11cc5eb1e94ee908e34eadff2751af48415712d0173583618b30436f76286de.otf) format("opentype");
+  unicode-range: U+E000-E0FF
+}
+
+.disabled {
+  display: none !important;
+}
+.hidden {
+  visibility: hidden;
+}
+
+html, body, .bg, .loader {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+}
+body {
+  background-color: rgb(14, 16, 19);
+  color: rgb(248, 249, 250);
+  font-family: VRCCustom, "Noto Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+.bg {
+  background-image: url(https://assets.vrchat.com/www/images/Background_lines.svg);
+  background-repeat: no-repeat;
+  background-size: auto 100%;
+}
+
+.loader {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: #0008;
+  position: absolute;
+  z-index: 2;
+}
+.loader > p {
+  font-size: 32px;
+}
+
+/* Spinner Animation */
+.spinner {
+  width: 150px;
+  height: 150px;
+  border: 5px solid #fff2;
+  border-top: 5px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.main {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.title {
+  font-size: 50px;
+  font-weight: bold;
+}
+
+.vrc-input {
+  font-family: inherit;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 1rem;
+  line-height: 1.25;
+  height: unset;
+  background: rgb(5, 25, 29);
+  border: 2px solid rgb(5, 60, 72);
+  border-radius: 4px;
+  color: rgb(106, 227, 249);
+  box-shadow: none;
+  transition: 250ms ease-in-out;
+  outline: none !important;
+}
+.vrc-button {
+  border: 2px solid rgb(6, 75, 92);
+  border-radius: 4px;
+  background: rgb(6, 75, 92);
+  color: rgb(106, 227, 249);
+  padding: 5px;
+  box-sizing: border-box;
+  flex: 1 1 0%;
+  outline: none !important;
+}
+.vrc-button:hover {
+  border-color: rgb(8, 108, 132);
+}
+
+#searchform {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.form-row {
+  display: flex;
+  gap: 10px;
+}
+.searchsubmit {
+  min-width: 40px;
+  background-image: url("./search.svg");
+  background-size: 28px;
+  background-position: 4px;
+  background-repeat: no-repeat;
+}
+
+.grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(256px, 1fr));
+  gap: 10px; /* Adjust gap between elements */
+  width: 100%;
+  max-width: 100%;
+}
+
+.grid-item {
+  position: relative;
+  height: 192px;
+  background-color: rgb(37, 42, 48);
+  font-size: 18px;
+  color: white;
+  border-radius: 4px;
+  padding: 5px;
+  overflow: hidden;
+}
+.grid-item > p {
+  margin-top: 0;
+}
+.grid-item > a {
+  position: absolute;
+  background-image: url("./vrclogo.ico");
+  background-size: cover;
+  bottom: 10px;
+  right: 10px;
+  width: 24px;
+  height: 24px;
+}
+.platforms{
+  position: absolute;
+  right: 42px;
+  bottom: 10px;
+  height: 24px;
+  width: 40px;
+  opacity: 0.5;
+}
+.platform {
+  border-radius: 50%;
+  width: 24px;
+  position: absolute;
+  height: 24px;
+  border: 2px solid #fff;
+}
+
+.pc {
+  background-color: rgba(0, 168, 252, 0.733);
+  z-index: 1;
+  left: 0;
+}
+.quest {
+  background-color: rgb(0, 226, 69);
+  right: 0;
+}
+.quest-inactive {
+  background-color: #888;
+  border: 2px solid #bbb;
+  right: 0;
+}
+
+.infscroll {
+  overflow: hidden;
+  display:flex;
+  align-items: center;
+  justify-content: center;
+}

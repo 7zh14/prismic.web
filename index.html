@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Prismic's Avatar Search</title>
+  <script src="script.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <template id="avi">
+    <div class="grid-item">
+      <p>
+        <b><span class="avi-name">MyAwesomeAvi</span></b> - <span class="avi-author">CoolGuy</span>
+      </p>
+      <span class="avi-description">BLahblahblash description be like !!!!</span>
+      <a href="https://example.com" target="_blank"></a>
+      <div class="platforms">
+        <div class="platform pc"></div>
+        <div class="platform quest quest-inactive"></div>
+      </div>
+    </div>
+  </template>
+  <div class="bg">
+    <div class="loader">
+      <div class="spinner"></div>
+      <p id="loading-text">Initializing website...</p>
+    </div>
+    <div class="main">
+      <div class="title">Prismic's Avatar Search - Web Edition</div>
+      <div>Indexed <span id="avi-count">...</span> avatars, created by <span id="author-count">...</span> authors. (Updated on: <span id="last-update">...</span>)</div>
+      <form id="searchform">
+        <div class="form-row">
+          <label for="search_name">Search Name</label>
+          <input type="checkbox" id="search_name" name="search_name" checked>
+          <div>|</div>
+          <label for="search_author">Search Author</label>
+          <input type="checkbox" id="search_author" name="search_author">
+          <div>|</div>
+          <label for="search_description">Search Description</label>
+          <input type="checkbox" id="search_description" name="search_description" checked>
+        </div> 
+        <div class="form-row">
+          <input class="vrc-input search" type="text" name="vrc_avatar_search" placeholder="Search...">
+          <input class="vrc-button searchsubmit" type="submit" value>
+        </div>
+      </form>
+      <span id="result-count"></span>
+      <div class="grid-container">
+        
+      </div>
+      <div class="infscroll hidden">
+        <div class="spinner"></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
