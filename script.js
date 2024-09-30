@@ -127,13 +127,22 @@ function setLoadingText(str) {
 }
 
 function markAvatars(obj, other, property) {
+  let nfa = []
   const map = obj.idMap.actualMap;
   for(item of other) {
     const lookup = map[item];
     if(!lookup) {
-      console.error("avatar not fund " + item);
+      nfa.push(item)
+      continue;
     }
     obj.entries[lookup][property] = true;
+  }
+  console.log(`Marked ${other.length-nfa.length} ${property} avatars.`)
+  if(nfa.length > 0) {
+    // TODO: this happens for avatars are quest/ios only and NOT on pc
+    // Since I don't really care about those right now, I am not gonna bother fixing it
+    console.error(`Found ${nfa.length} missing from the main list:`)
+    console.log(nfa)
   }
 }
 
@@ -144,6 +153,33 @@ async function getAuxPrismicObj(url) {
   lines.shift();
 
   return lines;
+}
+
+const cipher = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+=";
+
+function decodeAvatarID(crypt) {
+  var decrypt = new Array(33);
+  var newFormat = (cipher.indexOf(crypt[21]) >> 2) & 2;
+  for(var i = 0; i<11; i++) {
+    let idx = i*3;
+    var first = cipher.indexOf(crypt[i*2]);
+    var third = cipher.indexOf(crypt[i*2+1]);
+    decrypt[idx] = cipher[(first >> newFormat) & 15];
+    var second = 0
+    if(newFormat == 0) {
+      second = (first >> 2) & 12
+    }else{
+      second = (first & 3) << 2
+    }
+    decrypt[idx+1] = cipher[second | ((third >> 4) & 3)];
+    decrypt[idx+2] = cipher[third & 15];
+  }
+  decrypt.pop()
+  decrypt.splice(8, 0, '-');
+  decrypt.splice(13, 0, '-');
+  decrypt.splice(18, 0, '-');
+  decrypt.splice(23, 0, '-');
+  return "avtr_" + decrypt.join("");
 }
 
 async function getPrismicObj(url) {
@@ -165,7 +201,6 @@ async function getPrismicObj(url) {
   // devtools crashes otherwise
   avatar_data.idMap.actualMap = {};
 
-  var cipher = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+=";
 
   for(line of lines) {
     var obj = {};
@@ -177,43 +212,9 @@ async function getPrismicObj(url) {
     obj.quest = false; // avatar not quest comaptible by default
     avatar_data.idMap.actualMap[line[0]] = avatar_data.entries.length;
     avatar_data.entries.push(obj);
-
-    var decrypt = new Array(33);
-    var crypt = line[0];
-    for(var i = 0; i<11; i++) {
-      var first = cipher.indexOf(crypt[i*2]);
-      var third = cipher.indexOf(crypt[i*2+1]);
-      decrypt[i*3] = cipher[first & 15];
-      decrypt[i*3+1] = cipher[((first>>2) & 12) | ((third>>4) & 3)];
-      decrypt[i*3+2] = cipher[third & 15];
-    }
-    decrypt.pop()
-    decrypt.splice(8, 0, '-');
-    decrypt.splice(13, 0, '-');
-    decrypt.splice(18, 0, '-');
-    decrypt.splice(23, 0, '-');
-    obj.avatrId = "avtr_" + decrypt.join("");
+    obj.avatrId = decodeAvatarID(line[0]) 
   }
 
-  return avatar_data;
-}
-
-
-async function cachedRequest(url, processfunc) {
-  var gistId = url.match(/\/([^\/]+)\/raw/)[1];
-  var commitsUrl = `https://api.github.com/gists/${gistId}/commits`
-  var entry = await getData("cached_data", url);
-  var commits = await (await fetch(commitsUrl)).json();
-  var gistVersion = commits[0].version
-  
-  if(gistVersion == entry.tag) {
-    return entry.avatar_data;
-  }
-
-  var avatar_data = await processfunc(url);
-  
-  console.log("new tag " + gistVersion + " for " + url)
-  db.transaction(["cached_data"], 'readwrite').objectStore("cached_data").put({id: url, tag: gistVersion, avatar_data});
   return avatar_data;
 }
 
@@ -226,7 +227,7 @@ async function fetchAvatarData() {
 
   var gistId = urls[0].match(/\/([^\/]+)\/raw/)[1];
   var commitsUrl = `https://api.github.com/gists/${gistId}/commits`;
-  var entry = await getData("cached_data", gistId);
+  var entry = await getData("cached_data", gistId + "_commit");
   console.log("Loaded db entry");
 
   var gistVersion = null;
@@ -240,7 +241,7 @@ async function fetchAvatarData() {
   }
 
   if(entry != null && gistVersion == entry.tag) {
-    searchData = entry.avatar_data;
+    searchData = (await getData("cached_data", gistId)).avatar_data;
   } else {
     var arr = await Promise.all([
       getPrismicObj(urls[0]),
@@ -257,7 +258,8 @@ async function fetchAvatarData() {
     
     searchData = main;
     if(gistVersion != null) {
-      db.transaction(["cached_data"], 'readwrite').objectStore("cached_data").put({id: gistId, tag: gistVersion, avatar_data: searchData});
+      db.transaction(["cached_data"], 'readwrite').objectStore("cached_data").put({id: gistId, avatar_data: searchData});
+      db.transaction(["cached_data"], 'readwrite').objectStore("cached_data").put({id: gistId+"_commit", tag: gistVersion});
     }
   }
 
@@ -282,12 +284,15 @@ function getData(storeName, key) {
   });
 }
 
-const request = indexedDB.open('prismic_database', 1);
+const request = indexedDB.open('prismic_database', 2);
 
 request.onupgradeneeded = function(event) {
   const db = event.target.result;
+  let objectStoreNames = db.objectStoreNames;
+  for (let i = 0; i < objectStoreNames.length; i++) {
+    db.deleteObjectStore(objectStoreNames[i]);
+  }
   const tagsStore = db.createObjectStore('cached_data', { keyPath: 'id' });
-  tagsStore.createIndex('tag', 'tag', { unique: false });
 };
 request.onsuccess = function(event) {
   db = event.target.result;
