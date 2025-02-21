@@ -147,7 +147,7 @@ body {
   width: 24px;
   height: 24px;
 }
-.vrcx{
+.grid-item > a .vrcx{
   position: absolute;
   background-image: url("./VRCX.ico");
   background-size: cover;
