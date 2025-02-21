@@ -29,6 +29,7 @@ function makeAviElement(dict) {
   clone.querySelector(".avi-author").innerText = dict.author;
   clone.querySelector(".avi-description").innerText = dict.description;
   clone.querySelector("a").href = "https://vrchat.com/home/avatar/" + dict.avatrId;
+  clone.querySelector("a").href = "vrcx://avatar/" + dict.avatrId;
   if(dict.quest) {
     var q = clone.querySelector(".quest")
     q.classList.remove("quest-inactive")
@@ -304,3 +305,13 @@ request.onerror = function(event) {
   console.error('Database error:', event.target.errorCode);
   fetchAvatarData();
 };
+
+let SK = `░██████╗██╗░░██╗
+██╔════╝██║░██╔╝
+╚█████╗░█████═╝░
+░╚═══██╗██╔═██╗░
+██████╔╝██║░╚██╗
+╚═════╝░╚═╝░░╚═╝
+`;
+
+console.log("%c" + SK, "color: #dd13ce");
