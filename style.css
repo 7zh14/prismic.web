@@ -147,12 +147,12 @@ body {
   width: 24px;
   height: 24px;
 }
-.platforms > a {
+.vrcx {
   position: absolute;
   background-image: url("./VRCX.ico");
   background-size: cover;
   bottom: 0px;
-  right: 10px;
+  right: 50px;
   width: 24px;
   height: 24px;
 }
