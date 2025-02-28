@@ -28,7 +28,7 @@ function makeAviElement(dict) {
   clone.querySelector(".avi-name").innerText = dict.name;
   clone.querySelector(".avi-author").innerText = dict.author;
   clone.querySelector(".avi-description").innerText = dict.description;
-  clone.querySelector("a").href = "https://vrchat.com/home/avatar/" + dict.avatrId;
+  clone.querySelector(".vrc").href = "https://vrchat.com/home/avatar/" + dict.avatrId;
   clone.querySelector(".vrcx").href = "vrcx://avatar/" + dict.avatrId;
   if(dict.quest) {
     var q = clone.querySelector(".quest")
