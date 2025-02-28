@@ -138,7 +138,7 @@ body {
 .grid-item > p {
   margin-top: 0;
 }
-.grid-item > a {
+.vrc {
   position: absolute;
   background-image: url("./vrclogo.ico");
   background-size: cover;
