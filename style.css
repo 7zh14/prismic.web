@@ -156,6 +156,13 @@ body {
   width: 24px;
   height: 24px;
 }
+.vrcxs {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  width: 24px;
+  height: 24px;
+}
 .platforms{
   position: absolute;
   right: 42px;
