@@ -1,14 +1,14 @@
 const urls = [
-  "https://gist.githubusercontent.com/Mwr247/ef9a06ee1d3209a558b05561f7332d8e/raw/vrcavtrdb.txt",
-  "https://gist.githubusercontent.com/Mwr247/ef9a06ee1d3209a558b05561f7332d8e/raw/vrcavtrdb_qst.txt",
-  "https://gist.githubusercontent.com/Mwr247/ef9a06ee1d3209a558b05561f7332d8e/raw/vrcavtrdb_ios.txt"
+  "https://gist.githubusercontent.com/Mwr247/a80c1f9060fc4fd46a8f00d589c47c5a/raw/pasavtrdb.txt",
+  "https://gist.githubusercontent.com/Mwr247/a80c1f9060fc4fd46a8f00d589c47c5a/raw/pasavtrdb_qst.txt",
+  "https://gist.githubusercontent.com/Mwr247/a80c1f9060fc4fd46a8f00d589c47c5a/raw/pasavtrdb_ios.txt"
 ];
 
 // Unused
 const backupUrls = [
-  "https://prismic.net/vrc/vrcavtrdb.txt",
-  "https://prismic.net/vrc/vrcavtrdb_qst.txt",
-  "https://prismic.net/vrc/vrcavtrdb_ios.txt"
+  "https://prismic.net/vrc/pasavtrdb.txt",
+  "https://prismic.net/vrc/pasavtrdb_qst.txt",
+  "https://prismic.net/vrc/pasavtrdb.txt" // rip IOS users
 ];
 
 /* Latest PAS Update ???
@@ -152,7 +152,7 @@ function markAvatars(obj, other, property) {
       nfa.push(item)
       continue;
     }
-    obj.entries[lookup][property] = true;
+    lookup[property] = true;
   }
   console.log(`Marked ${other.length-nfa.length} ${property} avatars.`)
   if(nfa.length > 0) {
@@ -163,35 +163,13 @@ function markAvatars(obj, other, property) {
   }
 }
 
-async function getAuxPrismicObj(url) {
-  var response = await fetch(url);
-  var content = await response.text()
-  var lines = content.split("\n").map(x=>x.substring(0, x.indexOf("\t")).split("").reverse().join(""));
-  lines.shift();
-
-  return lines;
-}
-
-const cipher = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+=";
-
-function decodeAvatarID(crypt) {
-  var decrypt = new Array(33);
-  var newFormat = (cipher.indexOf(crypt[21]) >> 2) & 2;
-  for(var i = 0; i<11; i++) {
-    let idx = i*3;
-    var first = cipher.indexOf(crypt[i*2]);
-    var third = cipher.indexOf(crypt[i*2+1]);
-    decrypt[idx] = cipher[(first >> newFormat) & 15];
-    var second = 0
-    if(newFormat == 0) {
-      second = (first >> 2) & 12
-    }else{
-      second = (first & 3) << 2
-    }
-    decrypt[idx+1] = cipher[second | ((third >> 4) & 3)];
-    decrypt[idx+2] = cipher[third & 15];
+function decodeAvatarId(crypt, iv) {
+  for (var i = crypt.length - 1; i >= 0; i--) {
+    const k = crypt[i] ^ crypt[(i + crypt.length - 1) % crypt.length] ^ iv[i];
+    crypt[i] = (k);
   }
-  decrypt.pop()
+
+  let decrypt = Array.from(crypt).map(x=>x.toString(16).padStart(2,"0")).join("").split("").reverse();
   decrypt.splice(8, 0, '-');
   decrypt.splice(13, 0, '-');
   decrypt.splice(18, 0, '-');
@@ -199,40 +177,146 @@ function decodeAvatarID(crypt) {
   return "avtr_" + decrypt.join("");
 }
 
+class Reader {
+  constructor(uint8Array) {
+    this.data = uint8Array;
+    this.position = 0;
+  }
+
+  readByte() {
+    if (this.position >= this.data.length) {
+      throw new Error("Attempted to read beyond end of data.");
+    }
+    return this.data[this.position++];
+  }
+
+  readBytes(amount) {
+    if (this.position + amount > this.data.length) {
+      throw new Error("Attempted to read beyond end of data.");
+    }
+    const bytes = this.data.slice(this.position, this.position + amount);
+    this.position += amount;
+    return bytes;
+  }
+
+  readIntArray(n) {
+    const totalBytes = n * 4;
+    if (this.position + totalBytes > this.data.length) {
+      throw new Error("Attempted to read beyond end of data.");
+    }
+
+    const view = new DataView(this.data.buffer, this.data.byteOffset + this.position, totalBytes);
+    const result = new Int32Array(n);
+
+    for (let i = 0; i < n; i++) {
+      result[i] = view.getInt32(i * 4, true); // true = little-endian
+    }
+
+    this.position += totalBytes;
+    return result;
+  }
+  
+  readInt24() {
+    if(this.position + 3 > this.data.length)
+      throw new Error("Attempted to read beyond end of data.");
+
+    const bytes = this.readBytes(3);
+    return (bytes[0]<<16) | (bytes[1]<<8) | bytes[2];
+  }
+  
+  remaining() {
+    return this.data.length - this.position;
+  }
+}
+
+const staticBytes = [208,29,107,36,251,69,122,14,67,204,171,246,106,38,183,224];
+
 async function getPrismicObj(url) {
   setLoadingText("Downloading avatar database");
   var response = await fetch(url);
-  var content = await response.text()
+  var content = new Reader(new Uint8Array(await response.arrayBuffer()));
 
   setLoadingText("Parsing avatar database");
   var avatar_data = {};
-
-  var lines = content.split("\n").map(x=>x.split("\t"));
-  var first = lines.shift();
-  lines = lines.map(line=>line.map(x=>x.split("").reverse().join("")));
-  avatar_data.avatarCount = first[0];
-  avatar_data.authorCount = first[1];
-  avatar_data.lastUpdate = first[2];
+  
+  if(content.data.length == 0) throw new Error("Data has length zero");
+  if(String.fromCodePoint(...content.readBytes(3)) !== "PAS") throw new Error("PAS Header not found");
+  var _ = content.readBytes(2); // first byte -> platform (7 pc 4 quest 2 ios), second byte -> no clue, probably format version or sth
+  
+  avatar_data.avatarCount = content.readInt24();
+  avatar_data.authorCount = content.readInt24();
+  const dateArr = content.readBytes(2);
+  const dateNum = ((dateArr[0] << 8) + dateArr[1]) >> 3;
+  const year = ((dateNum >> 9) + 16).toString().padStart(2,"0");
+  const month = ((dateNum >> 5) & 15).toString().padStart(2,"0");
+  const day = (dateNum & 31).toString().padStart(2,"0");
+  avatar_data.lastUpdate = `20${year}-${month}-${day}`;
   avatar_data.entries = [];
   avatar_data.idMap = {};
   // devtools crashes otherwise
   avatar_data.idMap.actualMap = {};
 
+  const fileAvatars = content.readInt24();
+  const fileAuthors = content.readInt24(); // in the code but like it does nothing??
 
-  for(line of lines) {
+  const flagSize = content.readByte();
+  const randomBytes = content.readBytes(16);
+  const dynamicBytes = randomBytes.map((e,i)=> e^staticBytes[i]);
+  const dataSize = fileAvatars * 16;
+  const avatarIds = content.readBytes(dataSize);
+  const flagDataSize = fileAvatars * flagSize;
+  const flags = content.readIntArray(fileAvatars); // If flagsize != 4 shit will break, but so will the vrc world
+  const authorIds = content.readIntArray(fileAvatars);
+  const decoder = new TextDecoder("utf-8");
+  const strings = decoder.decode(new Uint8Array(content.readBytes(content.remaining()))).split("\n");
+  
+  if(strings.length < 2) throw new Error("Malformed string block");
+
+  const authorNames = strings[0].split("\r");
+  const avatarNames = strings[1].split("\r");
+
+  for(var i = 0; i < fileAvatars; i++) {
     var obj = {};
-    
-    obj.encodedId = line[0];
-    obj.name = line[1];
-    obj.author = line[2];
-    obj.description = line[3];
-    obj.quest = false; // avatar not quest comaptible by default
-    avatar_data.idMap.actualMap[line[0]] = avatar_data.entries.length;
+    const avatarId = decodeAvatarId(avatarIds.slice(i * 16, (i * 16) + 16), dynamicBytes);
+    const nameDesc = avatarNames[i].split("\t");
+    obj.name = nameDesc[0].split("").reverse().join("");
+    obj.author = authorNames[authorIds[i] & 524287].split("").reverse().join("");
+    obj.description = nameDesc[1]?.split("")?.reverse()?.join("");
+    obj.quest = false;
+    obj.ios = false;
+    avatar_data.idMap.actualMap[avatarId] = obj;
     avatar_data.entries.push(obj);
-    obj.avatrId = decodeAvatarID(line[0]) 
+    obj.avatrId = avatarId;
   }
 
   return avatar_data;
+}
+
+async function getAuxPrismicObj(url) {
+  var response = await fetch(url);
+  var content = new Reader(new Uint8Array(await response.arrayBuffer()));
+
+  if(content.data.length == 0) throw new Error("Data has length zero");
+  if(String.fromCodePoint(...content.readBytes(3)) !== "PAS") throw new Error("PAS Header not found");
+  var _ = content.readBytes(
+    2 //platform 
+    + 3 //avatars
+    + 3 //authors
+    + 2 //date
+  );
+  var fileAvatars = content.readInt24();
+  var _ = content.readBytes(
+    3 // fileAuthors
+    + 1 // flagSize
+  );
+  var ids = new Array(fileAvatars)
+  var dynamicBytes = content.readBytes(16).map((e,i)=> e^staticBytes[i]);
+  var avatarIds = content.readBytes(fileAvatars * 16);
+  for (var i = 0; i < fileAvatars; i++) {
+    ids[i] = decodeAvatarId(avatarIds.slice(i*16,(i*16)+16), dynamicBytes);
+  }
+
+  return ids;
 }
 
 async function fetchAvatarData() {
@@ -257,33 +341,75 @@ async function fetchAvatarData() {
     console.log("github hates u i guess")
   }
 
-  if(entry != null && gistVersion == entry.tag) {
-    searchData = (await getData("cached_data", gistId)).avatar_data;
-  } else {
-    var arr = await Promise.all([
-      getPrismicObj(urls[0]),
-      getAuxPrismicObj(urls[1]),
-      getAuxPrismicObj(urls[2])
-    ]);
-    main = arr[0];
-    quest = arr[1];
-    ios = arr[2];
-    
-    setLoadingText("Aggregating avatar data");
-    markAvatars(main, quest, "quest");
-    markAvatars(main, ios, "ios");
-    
-    searchData = main;
-    if(gistVersion != null) {
-      db.transaction(["cached_data"], 'readwrite').objectStore("cached_data").put({id: gistId, avatar_data: searchData});
-      db.transaction(["cached_data"], 'readwrite').objectStore("cached_data").put({id: gistId+"_commit", tag: gistVersion});
+  try {
+    if(entry != null && gistVersion == entry.tag) {
+      const meta = (await getData("cached_data", gistId+"_meta")).metadata;
+      meta.entries = [];
+      for(var i =0 ; i < meta.partCount; i++) {
+        const chunk = (await getData("cached_data", gistId+"_"+ i)).chunk;
+        meta.entries.push(...chunk);
+      }
+      searchData = meta;
+    } else {
+      var arr = await Promise.all([
+        getPrismicObj(urls[0]),
+        getAuxPrismicObj(urls[1]),
+        getAuxPrismicObj(urls[2])
+      ]);
+      main = arr[0];
+      quest = arr[1];
+      ios = arr[2];
+      
+      setLoadingText("Aggregating avatar data");
+      markAvatars(main, quest, "quest");
+      markAvatars(main, ios, "ios");
+
+      delete main.idMap;
+
+      searchData = main;
+      if(gistVersion != null) {
+        const blockSize = 100000;
+        const partCount = Math.ceil(main.entries.length / blockSize);
+        const meta = {
+          authorCount: main.authorCount,
+          avatarCount: main.avatarCount,
+          lastUpdate: main.lastUpdate,
+          partCount: partCount
+        }
+        
+        db.transaction(["cached_data"], 'readwrite').objectStore("cached_data").put({id: gistId+"_meta", metadata: meta});
+        db.transaction(["cached_data"], 'readwrite').objectStore("cached_data").put({id: gistId+"_commit", tag: gistVersion});
+        for(var i = 0; i < partCount; i++) {
+          db.transaction(["cached_data"], 'readwrite').objectStore("cached_data").put({id: gistId+"_"+i, chunk: main.entries.slice(blockSize*i, (blockSize*i)+blockSize)});
+        }
+      }
     }
+  }
+  catch(e) {
+    setLoadingText("Loading failed, reason:\n" + e);
+    return;
   }
 
   document.getElementsByClassName("loader")[0].classList.add("disabled");
   document.getElementById("avi-count").innerText = searchData.avatarCount;
   document.getElementById("author-count").innerText = searchData.authorCount;
   document.getElementById("last-update").innerText = searchData.lastUpdate;
+}
+
+function downloadFile(filename, uint8Array) {
+  const blob = new Blob([uint8Array], { type: "application/octet-stream" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.style.display = "none";
+
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+
+  URL.revokeObjectURL(url);
 }
 
 function getData(storeName, key) {
@@ -301,7 +427,7 @@ function getData(storeName, key) {
   });
 }
 
-const request = indexedDB.open('prismic_database', 2);
+const request = indexedDB.open('prismic_database', 3);
 
 request.onupgradeneeded = function(event) {
   const db = event.target.result;
