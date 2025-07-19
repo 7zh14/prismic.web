@@ -433,12 +433,3 @@ request.onerror = function(event) {
   console.error('Database error:', event.target.errorCode);
   fetchAvatarData();
 };
-
-let SK = `░██████╗██╗░░██╗
-██╔════╝██║░██╔╝
-╚█████╗░█████═╝░
-░╚═══██╗██╔═██╗░
-██████╔╝██║░╚██╗
-╚═════╝░╚═╝░░╚═╝`;
-
-console.log("%c" + SK, "color: #dd13ce");
