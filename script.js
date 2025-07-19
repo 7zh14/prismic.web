@@ -11,20 +11,6 @@ const backupUrls = [
   "https://prismic.net/vrc/pasavtrdb.txt" // rip IOS users
 ];
 
-/* Latest PAS Update ???
-const urls = [
-  "https://gist.githubusercontent.com/Mwr247/a80c1f9060fc4fd46a8f00d589c47c5a/raw/pasavtrdb.txt",
-  "https://gist.githubusercontent.com/Mwr247/a80c1f9060fc4fd46a8f00d589c47c5a/raw/pasavtrdb_ios.txt",
-  "https://gist.githubusercontent.com/Mwr247/a80c1f9060fc4fd46a8f00d589c47c5a/raw/pasavtrdb_qst.txt"
-]; */
-
-/* Unused
-const backupUrls = [
-  "https://prismic.net/vrc/pasavtrdb.txt",
-  "https://prismic.net/vrc/pasavtrdb_ios.txt",
-  "https://prismic.net/vrc/pasavtrdb_qst.txt"
-]; */
-
 var db;
 var searchData;
 var aviTemplate;
